@@ -11,9 +11,19 @@ ENABLE_X11=0
 GOT_PARAM=0
 
 LIBDRM_SRC_NAME="libdrm-2.4.100"
-LIBVA_SRC_NAME="libva-2.5.0"
-LIBVAUTILS_SRC_NAME="libva-utils-2.5.0"
-LIBVA_INTER_DRIVER_SRC_NAME="intel-vaapi-driver-2.3.0"
+LIBVA_SRC_NAME="libva-2.20.0"
+LIBVAUTILS_SRC_NAME="libva-utils-2.20.0"
+LIBVA_INTER_DRIVER_SRC_NAME="intel-vaapi-driver-2.4.1"
+
+INTEL_GMM_VER="22.3.7"
+INTEL_GMM_SRC_NAME="intel-gmmlib-$INTEL_GMM_VER"
+INTEL_GMM_SRC_FILE="$INTEL_GMM_SRC_NAME.tar.gz"
+INTEL_GMM_DIR_NAME="gmmlib-intel-gmmlib-$INTEL_GMM_VER"
+
+INTEL_MEDIA_VER="23.2.4"
+INTEL_MEDIA_SRC_NAME="intel-media-$INTEL_MEDIA_VER"
+INTEL_MEDIA_SRC_FILE="$INTEL_MEDIA_SRC_NAME.tar.gz"
+INTEL_MEDIA_DIR_NAME="media-driver-intel-media-$INTEL_MEDIA_VER"
 
 LIBYAMI_INF_CONFIG=
 
@@ -73,6 +83,11 @@ export NOCONFIGURE=1
 
 rm -r $INSTALL_PATH/*
 
+
+
+
+
+
 rm -f $LIBDRM_SRC_NAME.tar.gz
 #wget https://dri.freedesktop.org/libdrm/$LIBDRM_SRC_NAME.tar.gz
 wget http://server1.xrdp.org/yami/$LIBDRM_SRC_NAME.tar.gz
@@ -86,7 +101,8 @@ rm -f $LIBVA_SRC_NAME.tar.bz2
 rm -f $LIBVA_SRC_NAME.tar
 #wget https://www.freedesktop.org/software/vaapi/releases/libva/$LIBVA_SRC_NAME.tar.bz2
 #wget https://github.com/01org/libva/releases/download/2.3.0/$LIBVA_SRC_NAME.tar.bz2
-wget http://server1.xrdp.org/yami/$LIBVA_SRC_NAME.tar.bz2
+#wget http://server1.xrdp.org/yami/$LIBVA_SRC_NAME.tar.bz2
+wget https://github.com/intel/libva/releases/download/2.20.0/$LIBVA_SRC_NAME.tar.bz2
 if test $? -ne 0
 then
   echo "error downloading $LIBVA_SRC_NAME.tar.bz2"
@@ -97,7 +113,8 @@ rm -f $LIBVAUTILS_SRC_NAME.tar.bz2
 rm -f $LIBVAUTILS_SRC_NAME.tar
 #wget https://www.freedesktop.org/software/vaapi/releases/libva/$LIBVAUTILS_SRC_NAME.tar.bz2
 #wget https://github.com/intel/libva-utils/releases/download/2.2.0/$LIBVAUTILS_SRC_NAME.tar.bz2
-wget http://server1.xrdp.org/yami/$LIBVAUTILS_SRC_NAME.tar.bz2
+#wget http://server1.xrdp.org/yami/$LIBVAUTILS_SRC_NAME.tar.bz2
+wget https://github.com/intel/libva-utils/releases/download/2.20.0/$LIBVAUTILS_SRC_NAME.tar.bz2
 if test $? -ne 0
 then
   echo "error downloading $LIBVAUTILS_SRC_NAME.tar.bz2"
@@ -108,12 +125,37 @@ rm -f $LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
 rm -f $LIBVA_INTER_DRIVER_SRC_NAME.tar
 #wget https://www.freedesktop.org/software/vaapi/releases/libva-intel-driver/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
 #wget https://github.com/intel/intel-vaapi-driver/releases/download/2.3.0/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
-wget http://server1.xrdp.org/yami/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
+#wget http://server1.xrdp.org/yami/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
+wget https://github.com/intel/intel-vaapi-driver/releases/download/2.4.1/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
 if test $? -ne 0
 then
   echo "error downloading $LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2"
   exit 1
 fi
+
+
+
+
+
+rm -f $INTEL_GMM_SRC_FILE
+wget https://github.com/intel/gmmlib/archive/refs/tags/$INTEL_GMM_SRC_FILE
+if test $? -ne 0
+then
+  echo "error downloading $INTEL_GMM_SRC_FILE"
+  exit 1
+fi
+
+rm -f $INTEL_MEDIA_SRC_FILE
+wget https://github.com/intel/media-driver/archive/refs/tags/$INTEL_MEDIA_SRC_FILE
+if test $? -ne 0
+then
+  echo "error downloading $INTEL_MEDIA_SRC_FILE"
+  exit 1
+fi
+
+
+
+
 
 rm -fr $LIBDRM_SRC_NAME
 tar -zxf $LIBDRM_SRC_NAME.tar.gz
@@ -220,6 +262,63 @@ then
   exit 1
 fi
 cd ..
+
+
+
+
+
+rm -rf $INTEL_GMM_DIR_NAME
+tar -xf $INTEL_GMM_SRC_FILE
+mkdir $INTEL_GMM_DIR_NAME/build
+cd $INTEL_GMM_DIR_NAME/build
+PKG_CONFIG_PATH=$INSTALL_PATH/lib/pkgconfig cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH
+if test $? -ne 0
+then
+  echo "error configure $INTEL_GMM_DIR_NAME"
+  exit 1
+fi
+make
+if test $? -ne 0
+then
+  echo "error make $INTEL_GMM_DIR_NAME"
+  exit 1
+fi
+make install
+if test $? -ne 0
+then
+  echo "error make install $INTEL_GMM_DIR_NAME"
+  exit 1
+fi
+cd ..
+cd ..
+
+rm -rf $INTEL_MEDIA_DIR_NAME
+tar -xf $INTEL_MEDIA_SRC_FILE
+mkdir $INTEL_MEDIA_DIR_NAME/build
+cd $INTEL_MEDIA_DIR_NAME/build
+PKG_CONFIG_PATH=$INSTALL_PATH/lib/pkgconfig cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH
+if test $? -ne 0
+then
+  echo "error configure $INTEL_MEDIA_DIR_NAME"
+  exit 1
+fi
+make
+if test $? -ne 0
+then
+  echo "error make $INTEL_MEDIA_DIR_NAME"
+  exit 1
+fi
+make install
+if test $? -ne 0
+then
+  echo "error make install $INTEL_MEDIA_DIR_NAME"
+  exit 1
+fi
+cd ..
+cd ..
+
+
+
 
 rm -rf libyami
 git clone https://github.com/intel/libyami.git
