@@ -10,10 +10,25 @@ SHOW_HELP=0
 ENABLE_X11=0
 GOT_PARAM=0
 
-LIBDRM_SRC_NAME="libdrm-2.4.100"
-LIBVA_SRC_NAME="libva-2.20.0"
-LIBVAUTILS_SRC_NAME="libva-utils-2.20.0"
-LIBVA_INTER_DRIVER_SRC_NAME="intel-vaapi-driver-2.4.1"
+LIBDRM_VER="2.4.100"
+LIBDRM_SRC_NAME="libdrm-$LIBDRM_VER"
+LIBDRM_SRC_FILE="$LIBDRM_SRC_NAME.tar.gz"
+LIBDRM_DIR_NAME="$LIBDRM_SRC_NAME"
+
+LIBVA_VER="2.20.0"
+LIBVA_SRC_NAME="libva-$LIBVA_VER"
+LIBVA_SRC_FILE="$LIBVA_SRC_NAME.tar.bz2"
+LIBVA_DIR_NAME="$LIBVA_SRC_NAME"
+
+LIBVAUTILS_VER="2.20.0"
+LIBVAUTILS_SRC_NAME="libva-utils-$LIBVAUTILS_VER"
+LIBVAUTILS_SRC_FILE="$LIBVAUTILS_SRC_NAME.tar.bz2"
+LIBVAUTILS_DIR_NAME="$LIBVAUTILS_SRC_NAME"
+
+LIBVA_INTER_DRIVER_VER="2.4.1"
+LIBVA_INTER_DRIVER_SRC_NAME="intel-vaapi-driver-$LIBVA_INTER_DRIVER_VER"
+LIBVA_INTER_DRIVER_SRC_FILE="$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2"
+LIBVA_INTER_DRIVER_DIR_NAME="$LIBVA_INTER_DRIVER_SRC_NAME"
 
 INTEL_GMM_VER="22.3.7"
 INTEL_GMM_SRC_NAME="intel-gmmlib-$INTEL_GMM_VER"
@@ -81,85 +96,66 @@ echo "LIBYAMI_CONFIG            = $LIBYAMI_CONFIG"
 export PKG_CONFIG_PATH=$INSTALL_PATH/lib/pkgconfig
 export NOCONFIGURE=1
 
-rm -r $INSTALL_PATH/*
+rm -rf $INSTALL_PATH/*
 
+check_download_file()
+{
+  if test -f $1
+  then
+    HASH=$(md5sum $1 | head -n1 | sed -e 's/\s.*$//')
+    if test "$HASH" = "$2"
+    then
+      echo "file $1 ok, not downloaded"
+      return 0
+    else
+      rm -f $1
+    fi
+  fi
+  wget $3/$1
+  if test $? -ne 0
+  then
+    echo "error downloading $1"
+    exit 1
+  fi
+  return 0
+}
 
-
-
-
-
-rm -f $LIBDRM_SRC_NAME.tar.gz
 #wget https://dri.freedesktop.org/libdrm/$LIBDRM_SRC_NAME.tar.gz
-wget http://server1.xrdp.org/yami/$LIBDRM_SRC_NAME.tar.gz
-if test $? -ne 0
-then
-  echo "error downloading $LIBDRM_SRC_NAME.tar.gz"
-  exit 1
-fi
 
-rm -f $LIBVA_SRC_NAME.tar.bz2
-rm -f $LIBVA_SRC_NAME.tar
 #wget https://www.freedesktop.org/software/vaapi/releases/libva/$LIBVA_SRC_NAME.tar.bz2
 #wget https://github.com/01org/libva/releases/download/2.3.0/$LIBVA_SRC_NAME.tar.bz2
 #wget http://server1.xrdp.org/yami/$LIBVA_SRC_NAME.tar.bz2
-wget https://github.com/intel/libva/releases/download/2.20.0/$LIBVA_SRC_NAME.tar.bz2
-if test $? -ne 0
-then
-  echo "error downloading $LIBVA_SRC_NAME.tar.bz2"
-  exit 1
-fi
 
-rm -f $LIBVAUTILS_SRC_NAME.tar.bz2
-rm -f $LIBVAUTILS_SRC_NAME.tar
 #wget https://www.freedesktop.org/software/vaapi/releases/libva/$LIBVAUTILS_SRC_NAME.tar.bz2
 #wget https://github.com/intel/libva-utils/releases/download/2.2.0/$LIBVAUTILS_SRC_NAME.tar.bz2
 #wget http://server1.xrdp.org/yami/$LIBVAUTILS_SRC_NAME.tar.bz2
-wget https://github.com/intel/libva-utils/releases/download/2.20.0/$LIBVAUTILS_SRC_NAME.tar.bz2
-if test $? -ne 0
-then
-  echo "error downloading $LIBVAUTILS_SRC_NAME.tar.bz2"
-  exit 1
-fi
 
-rm -f $LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
-rm -f $LIBVA_INTER_DRIVER_SRC_NAME.tar
 #wget https://www.freedesktop.org/software/vaapi/releases/libva-intel-driver/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
 #wget https://github.com/intel/intel-vaapi-driver/releases/download/2.3.0/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
 #wget http://server1.xrdp.org/yami/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
-wget https://github.com/intel/intel-vaapi-driver/releases/download/2.4.1/$LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
-if test $? -ne 0
-then
-  echo "error downloading $LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2"
-  exit 1
-fi
 
+check_download_file "$LIBDRM_SRC_FILE" \
+                    "c47b1718734cc661734ed63f94bc27c1" \
+                    "http://server1.xrdp.org/yami"
+check_download_file "$LIBVA_SRC_FILE" \
+                    "cde8e62a027f6cad023895c6f38ba58e" \
+                    "https://github.com/intel/libva/releases/download/$LIBVA_VER"
+check_download_file "$LIBVAUTILS_SRC_FILE" \
+                    "ec343e7b2011e7fd5bf17208f8d7ce8a" \
+                    "https://github.com/intel/libva-utils/releases/download/$LIBVAUTILS_VER"
+check_download_file "$LIBVA_INTER_DRIVER_SRC_FILE" \
+                    "073fce0f409559109ad2dd0a6531055d" \
+                    "https://github.com/intel/intel-vaapi-driver/releases/download/$LIBVA_INTER_DRIVER_VER"
+check_download_file "$INTEL_GMM_SRC_FILE" \
+                    "522c2db1615a08279b78889aa14af473" \
+                    "https://github.com/intel/gmmlib/archive/refs/tags"
+check_download_file "$INTEL_MEDIA_SRC_FILE" \
+                    "68ded8a286c01c1c70fd73925279d12b" \
+                    "https://github.com/intel/media-driver/archive/refs/tags"
 
-
-
-
-rm -f $INTEL_GMM_SRC_FILE
-wget https://github.com/intel/gmmlib/archive/refs/tags/$INTEL_GMM_SRC_FILE
-if test $? -ne 0
-then
-  echo "error downloading $INTEL_GMM_SRC_FILE"
-  exit 1
-fi
-
-rm -f $INTEL_MEDIA_SRC_FILE
-wget https://github.com/intel/media-driver/archive/refs/tags/$INTEL_MEDIA_SRC_FILE
-if test $? -ne 0
-then
-  echo "error downloading $INTEL_MEDIA_SRC_FILE"
-  exit 1
-fi
-
-
-
-
-
-rm -fr $LIBDRM_SRC_NAME
+rm -fr $LIBDRM_DIR_NAME
 tar -zxf $LIBDRM_SRC_NAME.tar.gz
-cd $LIBDRM_SRC_NAME
+cd $LIBDRM_DIR_NAME
 ./configure --prefix=$INSTALL_PATH $LIBDRM_CONFIG
 if test $? -ne 0
 then
@@ -180,10 +176,11 @@ then
 fi
 cd ..
 
-rm -fr $LIBVA_SRC_NAME
-bunzip2 -k $LIBVA_SRC_NAME.tar.bz2
+rm -fr $LIBVA_DIR_NAME
+bunzip2 -k $LIBVA_SRC_FILE
 tar -xf $LIBVA_SRC_NAME.tar
-cd $LIBVA_SRC_NAME
+rm $LIBVA_SRC_NAME.tar
+cd $LIBVA_DIR_NAME
 ./configure --prefix=$INSTALL_PATH $LIBVA_CONFIG
 if test $? -ne 0
 then
@@ -208,10 +205,11 @@ then
 fi
 cd ..
 
-rm -fr $LIBVAUTILS_SRC_NAME
-bunzip2 -k $LIBVAUTILS_SRC_NAME.tar.bz2
+rm -fr $LIBVAUTILS_DIR_NAME
+bunzip2 -k $LIBVAUTILS_SRC_FILE
 tar -xf $LIBVAUTILS_SRC_NAME.tar
-cd $LIBVAUTILS_SRC_NAME
+rm $LIBVAUTILS_SRC_NAME.tar
+cd $LIBVAUTILS_DIR_NAME
 ./configure --prefix=$INSTALL_PATH $LIBVAUTILS_CONFIG
 if test $? -ne 0
 then
@@ -232,10 +230,11 @@ then
 fi
 cd ..
 
-rm -rf $LIBVA_INTER_DRIVER_SRC_NAME
-bunzip2 -k $LIBVA_INTER_DRIVER_SRC_NAME.tar.bz2
+rm -rf $LIBVA_INTER_DRIVER_DIR_NAME
+bunzip2 -k $LIBVA_INTER_DRIVER_SRC_FILE
 tar -xf $LIBVA_INTER_DRIVER_SRC_NAME.tar
-cd $LIBVA_INTER_DRIVER_SRC_NAME
+rm $LIBVA_INTER_DRIVER_SRC_NAME.tar
+cd $LIBVA_INTER_DRIVER_DIR_NAME
 echo "patching $LIBVA_INTER_DRIVER_SRC_NAME"
 patch -p1 < ../0002-RGB-YUV-fix.patch
 if test $? -ne 0
@@ -263,10 +262,6 @@ then
 fi
 cd ..
 
-
-
-
-
 rm -rf $INTEL_GMM_DIR_NAME
 tar -xf $INTEL_GMM_SRC_FILE
 mkdir $INTEL_GMM_DIR_NAME/build
@@ -289,6 +284,7 @@ then
   echo "error make install $INTEL_GMM_DIR_NAME"
   exit 1
 fi
+strip $INSTALL_PATH/lib/libigdgmm.so
 cd ..
 cd ..
 
@@ -314,11 +310,10 @@ then
   echo "error make install $INTEL_MEDIA_DIR_NAME"
   exit 1
 fi
+strip $INSTALL_PATH/lib/libigfxcmrt.so
+strip $INSTALL_PATH/lib/dri/iHD_drv_video.so
 cd ..
 cd ..
-
-
-
 
 rm -rf libyami
 git clone https://github.com/intel/libyami.git
