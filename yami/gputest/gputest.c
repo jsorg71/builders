@@ -127,7 +127,7 @@ void * start_routine(void* arg)
     int ydata_stride_bytes;
     void* uvdata;
     int uvdata_stride_bytes;
-    void* cdata;
+    void* cdata = malloc(1024 * 1024);
     int cdata_max_bytes;
     struct nv_info* nvi = (struct nv_info*) arg;
 
@@ -178,7 +178,7 @@ void * start_routine(void* arg)
         }
 
         cdata_max_bytes = 1024 * 1024;
-        rv = yami_encoder_encode(nvi->handle, &cdata, &cdata_max_bytes);
+        rv = yami_encoder_encode(nvi->handle, cdata, &cdata_max_bytes);
         if (rv != YI_SUCCESS)
         {
             break;
@@ -272,11 +272,13 @@ int main(int argc, char** argv)
 
     printf("read file size %d\n", g_in_file_bytes);
 
-    printf("about to init %d sessions\n", g_num_sessions);
+    printf("about to init %d sessions width %d height %d\n", g_num_sessions, g_width, g_height);
     for (index = 0; index < g_num_sessions; index++)
     {
-        printf("calling createEncoder\n");
-        rv = yami_encoder_create(&(g_sessions[index].handle), g_width, g_height, YI_TYPE_H264, 0);
+        printf("calling yami_encoder_create\n");
+        rv = yami_encoder_create(&(g_sessions[index].handle),
+                                 g_width, g_height, YI_TYPE_H264,
+                                 YI_H264_ENC_FLAGS_PROFILE_MAIN);
         if (rv != YI_SUCCESS)
         {
             printf("session %d failed\n", index);
