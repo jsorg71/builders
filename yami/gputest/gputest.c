@@ -78,7 +78,7 @@ static int g_frame = 1;
 
 /*****************************************************************************/
 static int
-n_save_data(const char* filename, const char* data, int data_size)
+n_save_data(const char* filename, const void* data, int data_size)
 {
     int fd;
     struct _header
@@ -134,49 +134,34 @@ void * start_routine(void* arg)
     printf("thread started\n");
     data_offset = 0;
     nvi->frames = 0;
-    while (1)
+    for (;;)
     {
         rv = yami_encoder_get_ybuffer(nvi->handle, &ydata, &ydata_stride_bytes);
         if (rv != YI_SUCCESS)
         {
             break;
         }
-        if (ydata_stride_bytes != g_width)
+        ls8 = g_data + data_offset;
+        ld8 = (char*)ydata;
+        for (index = 0; index < g_height; index++)
         {
-            ls8 = g_data + data_offset;
-            ld8 = ydata;
-            for (index = 0; index < g_height; index++)
-            {
-                memcpy(ld8, ls8, g_width);
-                ls8 += g_width;
-                ld8 += ydata_stride_bytes;
-            }
-        }
-        else
-        {
-            memcpy(ydata, g_data + data_offset, g_width * g_height);
+            memcpy(ld8, ls8, g_width);
+            ls8 += g_width;
+            ld8 += ydata_stride_bytes;
         }
         rv = yami_encoder_get_uvbuffer(nvi->handle, &uvdata, &uvdata_stride_bytes);
         if (rv != YI_SUCCESS)
         {
             break;
         }
-        if (uvdata_stride_bytes != g_width)
+        ls8 = g_data + data_offset + g_width * g_height;
+        ld8 = (char*)uvdata;
+        for (index = 0; index < g_height; index += 2)
         {
-            ls8 = g_data + data_offset + g_width * g_height;
-            ld8 = uvdata;
-            for (index = 0; index < g_height; index += 2)
-            {
-                memcpy(ld8, ls8, g_width);
-                ls8 += g_width;
-                ld8 += uvdata_stride_bytes;
-            }
+            memcpy(ld8, ls8, g_width);
+            ls8 += g_width;
+            ld8 += uvdata_stride_bytes;
         }
-        else
-        {
-            memcpy(uvdata, g_data + data_offset + g_width * g_height, g_width * (g_height / 2));
-        }
-
         cdata_max_bytes = 1024 * 1024;
         rv = yami_encoder_encode(nvi->handle, cdata, &cdata_max_bytes);
         if (rv != YI_SUCCESS)
@@ -309,7 +294,7 @@ int main(int argc, char** argv)
             return 1;
         }
     }
-    while (1)
+    for (;;)
     {
         int cr;
         for (index = 0; index < g_num_sessions; index++)
