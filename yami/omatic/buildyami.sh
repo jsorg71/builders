@@ -9,6 +9,7 @@ LIBYAMI_CONFIG="--disable-jpegdec --disable-vp8dec --disable-h265dec --enable-ca
 SHOW_HELP=0
 ENABLE_X11=0
 GOT_PARAM=0
+ENABLE_IHD=0
 
 LIBDRM_VER="2.4.100"
 LIBDRM_SRC_NAME="libdrm-$LIBDRM_VER"
@@ -57,6 +58,14 @@ case $i in
     ;;
     --disable-x11)
     ENABLE_X11=0
+    shift # past argument=value
+    ;;
+    --enable-ihd)
+    ENABLE_IHD=1
+    shift # past argument=value
+    ;;
+    --enable-iHD)
+    ENABLE_IHD=1
     shift # past argument=value
     ;;
     *)
@@ -146,12 +155,16 @@ check_download_file "$LIBVAUTILS_SRC_FILE" \
 check_download_file "$LIBVA_INTER_DRIVER_SRC_FILE" \
                     "073fce0f409559109ad2dd0a6531055d" \
                     "https://github.com/intel/intel-vaapi-driver/releases/download/$LIBVA_INTER_DRIVER_VER"
-check_download_file "$INTEL_GMM_SRC_FILE" \
-                    "522c2db1615a08279b78889aa14af473" \
-                    "https://github.com/intel/gmmlib/archive/refs/tags"
-check_download_file "$INTEL_MEDIA_SRC_FILE" \
-                    "68ded8a286c01c1c70fd73925279d12b" \
-                    "https://github.com/intel/media-driver/archive/refs/tags"
+
+if test $ENABLE_IHD -ne 0
+then
+  check_download_file "$INTEL_GMM_SRC_FILE" \
+                      "522c2db1615a08279b78889aa14af473" \
+                      "https://github.com/intel/gmmlib/archive/refs/tags"
+  check_download_file "$INTEL_MEDIA_SRC_FILE" \
+                      "68ded8a286c01c1c70fd73925279d12b" \
+                      "https://github.com/intel/media-driver/archive/refs/tags"
+fi
 
 rm -fr $LIBDRM_DIR_NAME
 tar -zxf $LIBDRM_SRC_NAME.tar.gz
@@ -262,58 +275,61 @@ then
 fi
 cd ..
 
-rm -rf $INTEL_GMM_DIR_NAME
-tar -xf $INTEL_GMM_SRC_FILE
-mkdir $INTEL_GMM_DIR_NAME/build
-cd $INTEL_GMM_DIR_NAME/build
-PKG_CONFIG_PATH=$INSTALL_PATH/lib/pkgconfig cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH
-if test $? -ne 0
+if test $ENABLE_IHD -ne 0
 then
-  echo "error configure $INTEL_GMM_DIR_NAME"
-  exit 1
-fi
-make
-if test $? -ne 0
-then
-  echo "error make $INTEL_GMM_DIR_NAME"
-  exit 1
-fi
-make install
-if test $? -ne 0
-then
-  echo "error make install $INTEL_GMM_DIR_NAME"
-  exit 1
-fi
-strip $INSTALL_PATH/lib/libigdgmm.so
-cd ..
-cd ..
+  rm -rf $INTEL_GMM_DIR_NAME
+  tar -xf $INTEL_GMM_SRC_FILE
+  mkdir $INTEL_GMM_DIR_NAME/build
+  cd $INTEL_GMM_DIR_NAME/build
+  PKG_CONFIG_PATH=$INSTALL_PATH/lib/pkgconfig cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH
+  if test $? -ne 0
+  then
+    echo "error configure $INTEL_GMM_DIR_NAME"
+    exit 1
+  fi
+  make
+  if test $? -ne 0
+  then
+    echo "error make $INTEL_GMM_DIR_NAME"
+    exit 1
+  fi
+  make install
+  if test $? -ne 0
+  then
+    echo "error make install $INTEL_GMM_DIR_NAME"
+    exit 1
+  fi
+  strip $INSTALL_PATH/lib/libigdgmm.so
+  cd ..
+  cd ..
 
-rm -rf $INTEL_MEDIA_DIR_NAME
-tar -xf $INTEL_MEDIA_SRC_FILE
-mkdir $INTEL_MEDIA_DIR_NAME/build
-cd $INTEL_MEDIA_DIR_NAME/build
-PKG_CONFIG_PATH=$INSTALL_PATH/lib/pkgconfig cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH
-if test $? -ne 0
-then
-  echo "error configure $INTEL_MEDIA_DIR_NAME"
-  exit 1
+  rm -rf $INTEL_MEDIA_DIR_NAME
+  tar -xf $INTEL_MEDIA_SRC_FILE
+  mkdir $INTEL_MEDIA_DIR_NAME/build
+  cd $INTEL_MEDIA_DIR_NAME/build
+  PKG_CONFIG_PATH=$INSTALL_PATH/lib/pkgconfig cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$INSTALL_PATH
+  if test $? -ne 0
+  then
+    echo "error configure $INTEL_MEDIA_DIR_NAME"
+    exit 1
+  fi
+  make
+  if test $? -ne 0
+  then
+    echo "error make $INTEL_MEDIA_DIR_NAME"
+    exit 1
+  fi
+  make install
+  if test $? -ne 0
+  then
+    echo "error make install $INTEL_MEDIA_DIR_NAME"
+    exit 1
+  fi
+  strip $INSTALL_PATH/lib/libigfxcmrt.so
+  strip $INSTALL_PATH/lib/dri/iHD_drv_video.so
+  cd ..
+  cd ..
 fi
-make
-if test $? -ne 0
-then
-  echo "error make $INTEL_MEDIA_DIR_NAME"
-  exit 1
-fi
-make install
-if test $? -ne 0
-then
-  echo "error make install $INTEL_MEDIA_DIR_NAME"
-  exit 1
-fi
-strip $INSTALL_PATH/lib/libigfxcmrt.so
-strip $INSTALL_PATH/lib/dri/iHD_drv_video.so
-cd ..
-cd ..
 
 rm -rf libyami
 git clone https://github.com/intel/libyami.git
