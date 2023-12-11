@@ -32,9 +32,9 @@
 
 #include "yami_inf.h"
 
-static VADisplay g_va_display = 0;
-static VAConfigID g_vp_config = 0;
-static VAContextID g_vp_context = 0;
+static VADisplay g_va_display = NULL;
+static VAConfigID g_vp_config = VA_INVALID_ID;
+static VAContextID g_vp_context = VA_INVALID_ID;
 static int g_dri3_major = 0;
 static int g_dri3_minor = 0;
 static int g_dri3_first_error = 0;
@@ -171,9 +171,9 @@ int
 yami_deinit(void)
 {
     vaDestroyContext(g_va_display, g_vp_context);
-    g_vp_context = 0;
+    g_vp_context = VA_INVALID_ID;
     vaDestroyConfig(g_va_display, g_vp_config);
-    g_vp_config = 0;
+    g_vp_config = VA_INVALID_ID;
     vaTerminate(g_va_display);
     g_va_display = 0;
     return 0;
@@ -322,6 +322,7 @@ yami_encoder_create(void **obj, int width, int height, int type, int flags)
     enc->height = height;
     enc->type = type;
     enc->flags = flags;
+    enc->fd_va_surface[0] = VA_INVALID_SURFACE;
     *obj = enc;
     return YI_SUCCESS;
 }
@@ -405,12 +406,12 @@ yami_encoder_resize(void *obj, int width, int height)
     va_status = vaDestroyImage(g_va_display, enc->va_image[0].image_id);
     if (va_status != VA_STATUS_SUCCESS)
     {
-        return 1;
+        return YI_ERROR_VADESTROYIMAGE;
     }
     va_status = vaDestroySurfaces(g_va_display, enc->va_surface, 1);
     if (va_status != VA_STATUS_SUCCESS)
     {
-        return 1;
+        return YI_ERROR_VADESTROYSURFACES;
     }
     memset(attribs, 0, sizeof(attribs));
     attribs[0].type = VASurfaceAttribPixelFormat;
@@ -430,16 +431,16 @@ yami_encoder_resize(void *obj, int width, int height)
                               width, height, enc->va_image);
     if (va_status != VA_STATUS_SUCCESS)
     {
-        return 1;
+        return YI_ERROR_VACREATEIMAGE;
     }
-    if (enc->fd_va_surface[0] != 0)
+    if (enc->fd_va_surface[0] != VA_INVALID_SURFACE)
     {
         va_status = vaDestroySurfaces(g_va_display, enc->fd_va_surface, 1);
         if (va_status != VA_STATUS_SUCCESS)
         {
             return YI_ERROR_VACREATESURFACES;
         }
-        enc->fd_va_surface[0] = 0;
+        enc->fd_va_surface[0] = VA_INVALID_SURFACE;
     }
     enc->yuvdata = NULL;
     enc->width = width;
@@ -556,7 +557,7 @@ yami_encoder_set_fd_src(void *obj, int fd, int fd_width, int fd_height,
     {
         return YI_ERROR_VACREATESURFACES;
     }
-    if (enc->fd_va_surface[0] != 0)
+    if (enc->fd_va_surface[0] != VA_INVALID_SURFACE)
     {
         vaDestroySurfaces(g_va_display, enc->fd_va_surface, 1);
     }
@@ -590,7 +591,7 @@ yami_encoder_encode(void *obj, void *cdata, int *cdata_max_bytes)
     memset(&yami_vf, 0, sizeof(yami_vf));
     yami_vf.crop.width = enc->width;
     yami_vf.crop.width = enc->height;
-    if (enc->fd_va_surface[0] != 0)
+    if (enc->fd_va_surface[0] != VA_INVALID_SURFACE)
     {
         yami_vf.surface = enc->fd_va_surface[0];
         yami_vf.fourcc = enc->fd_yami_fourcc;
@@ -625,7 +626,7 @@ yami_encoder_encode(void *obj, void *cdata, int *cdata_max_bytes)
     outb.bufferSize = *cdata_max_bytes;
     outb.format = OUTPUT_EVERYTHING;
     yami_status = encodeGetOutput(enc->encoder, &outb, 1);
-    if (yami_status != 0)
+    if (yami_status != YAMI_SUCCESS)
     {
         return YI_ERROR_ENCODEGETOUTPUT;
     }
@@ -688,6 +689,8 @@ yami_decoder_create(void **obj, int width, int height, int type, int flags)
     }
     dec->width = width;
     dec->height = height;
+    dec->surface_ctx = VA_INVALID_ID;
+    dec->surface = VA_INVALID_SURFACE;
     *obj = dec;
     return YI_SUCCESS;
 }
@@ -710,11 +713,11 @@ yami_decoder_delete(void *obj)
 #endif
     }
     releaseDecoder(dec->decoder);
-    if (dec->surface_ctx != 0)
+    if (dec->surface_ctx != VA_INVALID_ID)
     {
         vaDestroyContext(g_va_display, dec->surface_ctx);
     }
-    if (dec->surface != 0)
+    if (dec->surface != VA_INVALID_SURFACE)
     {
         vaDestroySurfaces(g_va_display, &dec->surface, 1);
     }
@@ -782,7 +785,7 @@ yami_decoder_get_pixmap(void *obj, void* display,
     {
         return YI_ERROR_DECODEGETOUTPUT;
     }
-    if (vf->surface == 0)
+    if (vf->surface == VA_INVALID_SURFACE)
     {
         vf->free(vf);
         return YI_ERROR_DECODEGETOUTPUT;
@@ -854,7 +857,7 @@ yami_decoder_get_fd_dst(void *obj, int *fd, int *fd_width, int *fd_height,
     {
         return YI_ERROR_DECODEGETOUTPUT;
     }
-    if (vf->surface == 0)
+    if (vf->surface == VA_INVALID_SURFACE)
     {
         vf->free(vf);
         return YI_ERROR_DECODEGETOUTPUT;
@@ -862,16 +865,16 @@ yami_decoder_get_fd_dst(void *obj, int *fd, int *fd_width, int *fd_height,
     if ((dec->surface_width != dec->vfi.width) ||
         (dec->surface_height != dec->vfi.height))
     {
-        if (dec->surface_ctx != 0)
+        if (dec->surface_ctx != VA_INVALID_ID)
         {
             vaDestroyContext(g_va_display, dec->surface_ctx);
         }
-        if (dec->surface != 0)
+        if (dec->surface != VA_INVALID_SURFACE)
         {
             vaDestroySurfaces(g_va_display, &dec->surface, 1);
         }
-        dec->surface_ctx = 0;
-        dec->surface = 0;
+        dec->surface_ctx = VA_INVALID_ID;
+        dec->surface = VA_INVALID_SURFACE;
         memset(&forcc, 0, sizeof(forcc));
         forcc.type = VASurfaceAttribPixelFormat;
         forcc.flags = VA_SURFACE_ATTRIB_SETTABLE;
@@ -894,7 +897,7 @@ yami_decoder_get_fd_dst(void *obj, int *fd, int *fd_width, int *fd_height,
         if (va_status != VA_STATUS_SUCCESS)
         {
             vaDestroySurfaces(g_va_display, &dec->surface, 1);
-            dec->surface = 0;
+            dec->surface = VA_INVALID_SURFACE;
             vf->free(vf);
             return YI_ERROR_VACREATECONTEXT;
         }
