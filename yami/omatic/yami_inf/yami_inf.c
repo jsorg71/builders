@@ -570,6 +570,13 @@ yami_encoder_set_fd_src(void *obj, int fd, int fd_width, int fd_height,
 int
 yami_encoder_encode(void *obj, void *cdata, int *cdata_max_bytes)
 {
+    return yami_encoder_encode_flags(obj, cdata, cdata_max_bytes, 0);
+}
+
+/*****************************************************************************/
+int
+yami_encoder_encode_flags(void *obj, void *cdata, int *cdata_max_bytes, int flags)
+{
     struct yami_inf_enc_priv *enc;
     VAStatus va_status;
     VideoFrame yami_vf;
@@ -591,6 +598,10 @@ yami_encoder_encode(void *obj, void *cdata, int *cdata_max_bytes)
     memset(&yami_vf, 0, sizeof(yami_vf));
     yami_vf.crop.width = enc->width;
     yami_vf.crop.width = enc->height;
+    if (flags & YI_H264_ENC_FLAG_KEYFRAME)
+    {
+        yami_vf.flags = VIDEO_FRAME_FLAGS_KEY;
+    }
     if (enc->fd_va_surface[0] != VA_INVALID_SURFACE)
     {
         yami_vf.surface = enc->fd_va_surface[0];
@@ -1256,10 +1267,12 @@ yami_get_funcs(struct yami_funcs *funcs, int version)
         funcs->yami_encoder_get_uvbuffer = yami_encoder_get_uvbuffer;
         funcs->yami_encoder_set_fd_src = yami_encoder_set_fd_src;
         funcs->yami_encoder_encode = yami_encoder_encode;
+        funcs->yami_encoder_encode_flags = yami_encoder_encode_flags;
         /* decoder */
         funcs->yami_decoder_create = yami_decoder_create;
         funcs->yami_decoder_delete = yami_decoder_delete;
         funcs->yami_decoder_decode = yami_decoder_decode;
+        funcs->yami_decoder_decode_time = yami_decoder_decode_time;
         funcs->yami_decoder_get_pixmap = yami_decoder_get_pixmap;
         funcs->yami_decoder_get_fd_dst = yami_decoder_get_fd_dst;
         /* surface */

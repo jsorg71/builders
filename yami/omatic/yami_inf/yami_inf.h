@@ -64,6 +64,8 @@
 #define YI_NV12                         0x10C
 #define YI_YUY2                         0x110
 
+#define YI_H264_ENC_FLAG_KEYFRAME       0x1
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -95,6 +97,8 @@ yami_encoder_set_fd_src(void *obj, int fd, int fd_width, int fd_height,
                         int fd_stride, int fd_size, int fd_bpp);
 int
 yami_encoder_encode(void *obj, void *cdata, int *cdata_max_bytes);
+int
+yami_encoder_encode_flags(void *obj, void *cdata, int *cdata_max_bytes, int flags);
 
 int
 yami_decoder_create(void **obj, int width, int height, int type, int flags);
@@ -142,7 +146,8 @@ struct yami_funcs
     int (*yami_encoder_set_fd_src)(void *obj, int fd, int fd_width, int fd_height,
                                    int fd_stride, int fd_size, int fd_bpp);
     int (*yami_encoder_encode)(void *obj, void *cdata, int *cdata_max_bytes);
-    YI_UINTPTR pad1[20 - 9];
+    int (*yami_encoder_encode_flags)(void *obj, void *cdata, int *cdata_max_bytes, int flags);
+    YI_UINTPTR pad1[20 - 10];
     /* decoder */
     int (*yami_decoder_create)(void **obj, int width, int height, int type, int flags);
     int (*yami_decoder_delete)(void *obj);
