@@ -82,7 +82,7 @@ fi
 
 if test $SHOW_HELP -ne 0
 then
-    echo "./buildyami.sh [--prefix=/opt/yami] [--enable-x11 | --disable-x11]"
+    echo "./buildyami.sh [--prefix=/opt/yami] [--enable-x11 | --disable-x11 | --enable-iHD]"
     exit 0
 fi
 
