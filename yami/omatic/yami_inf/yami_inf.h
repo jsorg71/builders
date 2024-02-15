@@ -110,12 +110,12 @@ int
 yami_decoder_decode_time(void *obj, void *cdata, int cdata_bytes,
                          YI_INT64 time);
 int
-yami_decoder_get_pixmap(void *obj, void* display,
+yami_decoder_get_pixmap(void *obj, void *display,
                         int width, int height, int *pixmap);
 int
 yami_decoder_get_fd_dst(void *obj, int *fd, int *fd_width, int *fd_height,
                         int *fd_stride, int *fd_size, int *fd_bpp,
-                        YI_INT64* fd_time);
+                        YI_INT64 *fd_time);
 
 int
 yami_surface_create(void **obj, int width, int height, int type, int flags);
@@ -154,11 +154,11 @@ struct yami_funcs
     int (*yami_decoder_decode)(void *obj, void *cdata, int cdata_bytes);
     int (*yami_decoder_decode_time)(void *obj, void *cdata, int cdata_bytes,
                                     YI_INT64 time);
-    int (*yami_decoder_get_pixmap)(void *obj, void* display,
+    int (*yami_decoder_get_pixmap)(void *obj, void *display,
                                    int width, int height, int *pixmap);
     int (*yami_decoder_get_fd_dst)(void *obj, int *fd, int *fd_width, int *fd_height,
                                    int *fd_stride, int *fd_size, int *fd_bpp,
-                                   YI_INT64* fd_time);
+                                   YI_INT64 *fd_time);
     YI_UINTPTR pad2[20 - 6];
     /* surface */
     int (*yami_surface_create)(void **obj, int width, int height, int type, int flags);
