@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <va/va.h>
 #include <va/va_drm.h>
@@ -573,6 +574,187 @@ yami_encoder_encode(void *obj, void *cdata, int *cdata_max_bytes)
     return yami_encoder_encode_flags(obj, cdata, cdata_max_bytes, 0);
 }
 
+#if 0
+
+/******************************************************************************/
+/******************************************************************************/
+struct bmp_magic
+{
+    char magic[2];
+};
+
+struct bmp_hdr
+{
+    unsigned int   size;        /* file size in bytes */
+    unsigned short reserved1;
+    unsigned short reserved2;
+    unsigned int   offset;      /* offset to image data, in bytes */
+};
+
+struct dib_hdr
+{
+    unsigned int   hdr_size;
+    int            width;
+    int            height;
+    unsigned short nplanes;
+    unsigned short bpp;
+    unsigned int   compress_type;
+    unsigned int   image_size;
+    int            hres;
+    int            vres;
+    unsigned int   ncolors;
+    unsigned int   nimpcolors;
+};
+
+/******************************************************************************/
+static int
+save_to_bmp(const char *filename, char *data, int stride_bytes,
+            int width, int height, int depth, int bits_per_pixel)
+{
+    struct bmp_magic bm;
+    struct bmp_hdr bh;
+    struct dib_hdr dh;
+    int bytes;
+    int fd;
+    int index;
+    int i1;
+    int pixel;
+    int extra;
+    int file_stride_bytes;
+    char *line;
+    char *line_ptr;
+
+    if ((depth == 24) && (bits_per_pixel == 32))
+    {
+    }
+    else if ((depth == 32) && (bits_per_pixel == 32))
+    {
+    }
+    else
+    {
+        return 1;
+    }
+    bm.magic[0] = 'B';
+    bm.magic[1] = 'M';
+
+    /* scan lines are 32 bit aligned, bottom 2 bits must be zero */
+    file_stride_bytes = width * ((depth + 7) / 8);
+    extra = file_stride_bytes;
+    extra = extra & 3;
+    extra = (4 - extra) & 3;
+    file_stride_bytes += extra;
+
+    bh.size = sizeof(bm) + sizeof(bh) + sizeof(dh) + height * file_stride_bytes;
+    bh.reserved1 = 0;
+    bh.reserved2 = 0;
+    bh.offset = sizeof(bm) + sizeof(bh) + sizeof(dh);
+
+    dh.hdr_size = sizeof(dh);
+    dh.width = width;
+    dh.height = height;
+    dh.nplanes = 1;
+    dh.bpp = depth;
+    dh.compress_type = 0;
+    dh.image_size = height * file_stride_bytes;
+    dh.hres = 0xb13;
+    dh.vres = 0xb13;
+    dh.ncolors = 0;
+    dh.nimpcolors = 0;
+
+    fd = open(filename, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (fd == -1)
+    {
+        return 1;
+    }
+    bytes = write(fd, &bm, sizeof(bm));
+    if (bytes != sizeof(bm))
+    {
+    }
+    bytes = write(fd, &bh, sizeof(bh));
+    if (bytes != sizeof(bh))
+    {
+    }
+    bytes = write(fd, &dh, sizeof(dh));
+    if (bytes != sizeof(dh))
+    {
+    }
+    data += stride_bytes * height;
+    data -= stride_bytes;
+    if ((depth == 24) && (bits_per_pixel == 32))
+    {
+        line = (char *) malloc(file_stride_bytes);
+        memset(line, 0, file_stride_bytes);
+        for (index = 0; index < height; index++)
+        {
+            line_ptr = line;
+            for (i1 = 0; i1 < width; i1++)
+            {
+                pixel = ((int *)data)[i1];
+                *(line_ptr++) = (pixel >>  0) & 0xff;
+                *(line_ptr++) = (pixel >>  8) & 0xff;
+                *(line_ptr++) = (pixel >> 16) & 0xff;
+            }
+            bytes = write(fd, line, file_stride_bytes);
+            if (bytes != file_stride_bytes)
+            {
+            }
+            data -= stride_bytes;
+        }
+        free(line);
+    }
+    else if (depth == bits_per_pixel)
+    {
+        for (index = 0; index < height; index++)
+        {
+            bytes = write(fd, data, width * (bits_per_pixel / 8));
+            if (bytes != width * (bits_per_pixel / 8))
+            {
+            }
+            data -= stride_bytes;
+        }
+    }
+    else
+    {
+    }
+    close(fd);
+    return 0;
+}
+
+static int g_dump_index = 0;
+
+/*****************************************************************************/
+static int
+yami_dump_surface(VASurfaceID sur, int width, int height)
+{
+    VAImage image;
+    VAImageFormat image_format;
+    VAStatus status;
+    void *buf_ptr;
+    char filename[256];
+
+    memset(&image, 0, sizeof(image));
+    memset(&image_format, 0, sizeof(image_format));
+    image_format.fourcc = VA_FOURCC_YUY2;
+    status = vaCreateImage(g_va_display, &image_format, width, height, &image);
+    if (status == VA_STATUS_SUCCESS)
+    {
+        status = vaGetImage(g_va_display, sur, 0, 0, width, height, image.image_id);
+        if (status == VA_STATUS_SUCCESS)
+        {
+            status = vaMapBuffer(g_va_display, image.buf, &buf_ptr);
+            if (status == VA_STATUS_SUCCESS)
+            {
+                snprintf(filename, 255, "/tmp/va_surface%8.8x.bmp", g_dump_index++);
+                save_to_bmp(filename, buf_ptr, image.pitches[0], width / 2, height, 24, 32);
+                vaUnmapBuffer(g_va_display, image.buf);
+            }
+        }
+        vaDestroyImage(g_va_display, image.image_id);
+    }
+}
+
+#endif
+
 /*****************************************************************************/
 int
 yami_encoder_encode_flags(void *obj, void *cdata, int *cdata_max_bytes, int flags)
@@ -627,6 +809,9 @@ yami_encoder_encode_flags(void *obj, void *cdata, int *cdata_max_bytes, int flag
     {
         return YI_ERROR_VASYNCSURFACE;
     }
+
+    //yami_dump_surface(yami_vf.surface, enc->width, enc->height);
+
     yami_status = encodeEncode(enc->encoder, &yami_vf);
     if (yami_status != YAMI_SUCCESS)
     {
