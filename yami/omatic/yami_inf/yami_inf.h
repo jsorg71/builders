@@ -13,7 +13,7 @@
 #define YI_VERSION_INT(_major, _minor) (((_major) << 16) | (_minor))
 
 #define YI_MAJOR                        0
-#define YI_MINOR                        2
+#define YI_MINOR                        3
 
 #define YI_SUCCESS                      0
 #define YI_ERROR_MEMORY                 1
